@@ -3,16 +3,26 @@ import random
 
 class GeneticAlgorithm:
 
-    def __call__(self, generations=20, survived_count=20, hybrid_count=10, mutant_count=10):
+    def __call__(self, generations=15, survived_count=30, hybrid_count=30, mutant_count=30):
 
         population_count = survived_count + hybrid_count + mutant_count
 
         self._individuals = [self._spawn() for _ in xrange(population_count)]
 
+        fitness_by_object_id = {}
+
         for _ in xrange(generations):
 
+            for individual in self._individuals:
+                if id(individual) not in fitness_by_object_id:
+                    fitness_by_object_id[id(individual)] = self._fit(individual)
+
+            # TODO: allow more hybrids and mutants then survived
+
             # Sort from the fittest to the least fit
-            self._individuals.sort(key=self._fit, reverse=True)
+            self._individuals.sort(
+                key=lambda individual: fitness_by_object_id[id(individual)],
+                reverse=True)
 
             survived = self._individuals[:survived_count]
             hybrids = map(self._cross, random.sample(survived, hybrid_count), random.sample(survived, hybrid_count))
