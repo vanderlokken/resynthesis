@@ -25,10 +25,12 @@ class Adsr:
 
     def mutate(self):
         new_adsr = Adsr()
-        new_adsr._times = sorted([
-            time * 0.25 + random.random() * 0.75 for time in self._times])
-        new_adsr._amplitudes = [
-            amplitude * 0.5 + random.random() * 0.5 for amplitude in self._amplitudes]
+        if random.random() < 0.1:
+            new_adsr._times = sorted([random.random() for _ in xrange(4)])
+            new_adsr._amplitudes = [random.random() for _ in xrange(4)]
+        else:
+            new_adsr._times = self._times
+            new_adsr._amplitudes = self._amplitudes
         return new_adsr
 
     def envelope(self, overall_time):

@@ -17,19 +17,22 @@ class Sound:
     def spawn():
         new_sound = Sound()
         new_sound._sound_sources = [SoundSource.spawn(), SoundSource.spawn()]
-        new_sound._master_volume = random.random() * Sound._max_volume
+        new_sound._master_volume = (random.random() ** 2) * Sound._max_volume
         return new_sound
 
     def cross(self, other):
         new_sound = Sound()
-        new_sound._sound_sources = [first_source.cross(second_source) for first_source, second_source in zip(self._sound_sources, other._sound_sources)]
+        new_sound._sound_sources = [first_source if random.random() > 0.5 else second_source for first_source, second_source in zip(self._sound_sources, other._sound_sources)]
         new_sound._master_volume = (self._master_volume + other._master_volume) * 0.5
         return new_sound
 
     def mutate(self):
         new_sound = Sound()
         new_sound._sound_sources = [source.mutate() for source in self._sound_sources]
-        new_sound._master_volume = (self._master_volume + random.random() * Sound._max_volume) * 0.5
+        if random.random() < 0.25:
+            new_sound._master_volume = self._master_volume
+        else:
+            new_sound._master_volume = (random.random() ** 2) * Sound._max_volume
         return new_sound
 
     def to_pcm_audio(self, reference_pcm_audio):

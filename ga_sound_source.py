@@ -24,7 +24,7 @@ class SoundSource:
 
     def mutate(self):
         new_sound_source = SoundSource()
-        new_sound_source._frequency = self._frequency * 0.5 + (20 + random.random() * 1000) * 0.5
+        new_sound_source._frequency = self._frequency * 0.75 + (20 + random.random() * 1000) * 0.25
         new_sound_source._adsr = self._adsr.mutate()
         return new_sound_source
 
