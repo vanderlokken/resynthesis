@@ -16,7 +16,7 @@ class Sound:
     @staticmethod
     def spawn():
         new_sound = Sound()
-        new_sound._sound_sources = [SoundSource.spawn(), SoundSource.spawn()]
+        new_sound._sound_sources = [SoundSource.spawn()]
         new_sound._master_volume = (random.random() ** 2) * Sound._max_volume
         return new_sound
 
