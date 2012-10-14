@@ -7,8 +7,8 @@ class PcmAudio:
 
     def __init__(self, sampling_rate, samples):
 
-        self.__sampling_rate = sampling_rate
-        self.__samples = samples
+        self.sampling_rate = sampling_rate
+        self.samples = samples
 
     @staticmethod
     def from_wave_file(filename):
@@ -41,18 +41,10 @@ class PcmAudio:
         with contextlib.closing(wave.open(filename, "wb")) as wave_file:
 
             wave_file.setnchannels(1)
-            wave_file.setframerate(self.__sampling_rate)
+            wave_file.setframerate(self.sampling_rate)
             wave_file.setsampwidth(2)
-            wave_file.writeframes(struct.pack("<%dh" % len(self.__samples), *self.__samples))
-
-    @property
-    def sampling_rate(self):
-        return self.__sampling_rate
-
-    @property
-    def samples(self):
-        return self.__samples
+            wave_file.writeframes(struct.pack("<%dh" % len(self.samples), *self.samples))
 
     @property
     def duration(self):
-        return len(self.__samples) / float(self.__sampling_rate)
+        return len(self.samples) / float(self.sampling_rate)
