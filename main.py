@@ -1,7 +1,7 @@
 import sys
 
 from pcm_audio import PcmAudio
-from synthesis import synthesize
+from resynthesis import resynthesize
 
 
 def main():
@@ -12,7 +12,7 @@ def main():
     _, input_filename, output_filename = sys.argv
 
     pcm_audio = PcmAudio.from_wave_file(input_filename)
-    synthesized_pcm_audio = synthesize(pcm_audio)
+    synthesized_pcm_audio = resynthesize(pcm_audio)
     synthesized_pcm_audio.to_wave_file(output_filename)
 
 

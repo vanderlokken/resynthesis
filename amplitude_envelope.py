@@ -11,9 +11,10 @@ class AmplitudeEnvelope:
     def add_point(self, time, amplitude):
 
         self.__points.append((time, amplitude))
-        self.__points.sort(key=lambda point: point[0])
 
     def get_output(self, sample_count, sample_duration):
+
+        self.__points.sort(key=lambda point: point[0])
 
         x = numpy.array([point[0] for point in self.__points])
         y = numpy.array([point[1] for point in self.__points])
