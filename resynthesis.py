@@ -19,10 +19,10 @@ def resynthesize(reference_pcm_audio):
         sound = Sound(reference_pcm_audio, pcm)
 
         algorithm = GSimpleGA(sound)
-        algorithm.setPopulationSize(60)
-        algorithm.setGenerations(40)
+        algorithm.setPopulationSize(20)
+        algorithm.setGenerations(50)
         algorithm.setCrossoverRate(0.8)
-        algorithm.setMutationRate(0.1)
+        algorithm.setMutationRate(0.25)
         algorithm.evolve(freq_stats=1)
         best_sound = algorithm.bestIndividual()
 
