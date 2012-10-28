@@ -51,11 +51,16 @@ class Sound(GenomeBase):
         self.crossover.set(self._cross)
         self.evaluator.set(self._evaluate)
 
+        self._frequency = 0
+        self._time_points = []
+        self._amplitudes = []
+
         self._reference_pcm_audio = reference_pcm_audio
         self._reference_spectrum_list = _generate_spectrum_list(reference_pcm_audio)
 
-        self._minimal_amplitude = numpy.min(reference_pcm_audio.samples)
-        self._maximal_amplitude = numpy.max(reference_pcm_audio.samples)
+        amplitudes = numpy.abs(reference_pcm_audio.samples)
+        self._minimal_amplitude = numpy.min(amplitudes)
+        self._maximal_amplitude = numpy.max(amplitudes)
 
     @classmethod
     def _initialize(cls, sound):
@@ -155,9 +160,13 @@ class Sound(GenomeBase):
         other._frequency = self._frequency
         other._time_points = self._time_points[:]
         other._amplitudes = self._amplitudes[:]
+        other._minimal_amplitude = self._minimal_amplitude
+        other._maximal_amplitude = self._maximal_amplitude
 
     def clone(self):
-        return copy.copy(self)
+        sound = copy.copy(self)
+        self.copy(sound)
+        return sound
 
     def to_pcm_audio(self):
 
@@ -174,23 +183,16 @@ class Sound(GenomeBase):
 
         return PcmAudio(self._reference_pcm_audio.sampling_rate, list(samples))
 
-    # def __repr__(self):
+    def __repr__(self):
 
-    #     points = list(zip(self._time_points, self._amplitudes))
-    #     points.sort(key=lambda point: point[0])
+        points = list(zip(self._time_points, self._amplitudes))
+        points.sort(key=lambda point: point[0])
 
-    #     interval = lambda index: (
-    #         points[index + 1][0] - points[index][0],
-    #         points[index + 1][1] - points[index][1])
-
-    #     return '\n'.join(
-    #         (
-    #             "Frequency: %.1f Hz" % self._frequency,
-    #             "Attack: %.2f, %f" % interval(0),
-    #             "Delay: %.2f, %f" % interval(0),
-    #             "Sustain: %.2f, %f" % interval(1),
-    #             "Release: %.2f, %f" % interval(2)
-    #         ))
+        return '\n'.join(
+            (
+                "Frequency: %.1f Hz" % self._frequency,
+                "Amplitude envelope: %s" % str(points)
+            ))
 
     def random_amplitude(self):
         return random.randint(self._minimal_amplitude, self._maximal_amplitude)
