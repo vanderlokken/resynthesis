@@ -42,7 +42,7 @@ class Sound(GenomeBase):
 
     _point_count = 5
     
-    def __init__(self, reference_pcm_audio):
+    def __init__(self, reference_pcm_audio, base_pcm=None):
 
         GenomeBase.__init__(self)
 
@@ -57,6 +57,8 @@ class Sound(GenomeBase):
 
         self._reference_pcm_audio = reference_pcm_audio
         self._reference_spectrum_list = _generate_spectrum_list(reference_pcm_audio)
+
+        self._base_pcm = base_pcm
 
         amplitudes = numpy.abs(reference_pcm_audio.samples)
         self._minimal_amplitude = numpy.min(amplitudes)
@@ -157,6 +159,7 @@ class Sound(GenomeBase):
         GenomeBase.copy(self, other)
         other._reference_pcm_audio = self._reference_pcm_audio
         other._reference_spectrum_list = self._reference_spectrum_list
+        other._base_pcm = self._base_pcm
         other._frequency = self._frequency
         other._time_points = self._time_points[:]
         other._amplitudes = self._amplitudes[:]
@@ -179,7 +182,9 @@ class Sound(GenomeBase):
             envelope.add_point(time * sample_count * sample_duration, amplitude)
 
         samples = oscillator.get_output(sample_count, sample_duration) * envelope.get_output(sample_count, sample_duration)
-        samples = numpy.clip(samples, -self._maximal_amplitude, self._maximal_amplitude)
+
+        if self._base_pcm:
+            samples += self._base_pcm.samples
 
         return PcmAudio(self._reference_pcm_audio.sampling_rate, list(samples))
 

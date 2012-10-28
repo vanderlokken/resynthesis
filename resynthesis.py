@@ -4,24 +4,31 @@ from sound import Sound
 
 
 def resynthesize(reference_pcm_audio):
-    sound = Sound(reference_pcm_audio)
-
-    # v = 0.013 * 2**15
-    # sound._frequency = 391
-    # sound._time_points = [0, 0.6, 0.8, 1, 1]
-    # sound._amplitudes = [v, v/2, v/4, 0, 0]
+    # sound = Sound(reference_pcm_audio)
+    # sound._frequency = 390.6
+    # sound._time_points = [0.056, 0.062, 0.074, 0.622, 0.895]
+    # sound._amplitudes = [3660, 3720, 1106, 104, 17]
     # print sound
-    # print Sound._evaluate(sound)
-    # return sound.to_pcm_audio()
+    # print "Rank: %.2f" % Sound._evaluate(sound)
+    # pcm = sound.to_pcm_audio()
 
-    algorithm = GSimpleGA(sound)
-    algorithm.setPopulationSize(60)
-    algorithm.setGenerations(40)
-    algorithm.setCrossoverRate(0.8)
-    algorithm.setMutationRate(0.2)
-    algorithm.evolve(freq_stats=1)
-    best_sound = algorithm.bestIndividual()
+    pcm = None
 
-    # print best_sound
+    for _ in range(2):
 
-    return best_sound.to_pcm_audio()
+        sound = Sound(reference_pcm_audio, pcm)
+
+        algorithm = GSimpleGA(sound)
+        algorithm.setPopulationSize(60)
+        algorithm.setGenerations(40)
+        algorithm.setCrossoverRate(0.8)
+        algorithm.setMutationRate(0.1)
+        algorithm.evolve(freq_stats=1)
+        best_sound = algorithm.bestIndividual()
+
+        print best_sound
+        print "Rank: %.2f" % Sound._evaluate(best_sound)
+
+        pcm = best_sound.to_pcm_audio()
+
+    return pcm
