@@ -1,3 +1,4 @@
+from collections import defaultdict
 import copy
 import random
 
@@ -14,10 +15,14 @@ from pcm_audio import PcmAudio
 
 class Spectrum:
 
+    _windows = {}
+
     def __init__(self, samples):
 
-        amplitudes = scipy.fftpack.rfft(
-            numpy.array(map(float, samples)) * numpy.hanning(len(samples)))
+        if len(samples) not in self._windows:
+            self._windows[len(samples)] = numpy.hanning(len(samples))
+
+        amplitudes = scipy.fftpack.rfft(samples * self._windows[len(samples)])
 
         self._magnitudes = numpy.abs(amplitudes[1:])
 
@@ -186,7 +191,7 @@ class Sound(GenomeBase):
         if self._base_pcm:
             samples += self._base_pcm.samples
 
-        return PcmAudio(self._reference_pcm_audio.sampling_rate, list(samples))
+        return PcmAudio(self._reference_pcm_audio.sampling_rate, samples)
 
     def __repr__(self):
 
