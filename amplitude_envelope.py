@@ -19,6 +19,6 @@ class AmplitudeEnvelope:
         x = numpy.array([point[0] for point in self.__points])
         y = numpy.array([point[1] for point in self.__points])
 
-        time_points = numpy.arange(0, sample_count * sample_duration, sample_duration)
+        time_points = numpy.linspace(0, sample_count * sample_duration, sample_count)
 
         return numpy.interp(time_points, x, y)

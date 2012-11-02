@@ -193,7 +193,8 @@ class Sound(GenomeBase):
         for time, amplitude in zip(self._time_points, self._amplitudes):
             envelope.add_point(time * self._reference_pcm_audio.duration, amplitude)
 
-        samples = oscillator.get_output(sample_count, sample_duration) * envelope.get_output(sample_count, sample_duration)
+        samples = oscillator.get_output(sample_count, sample_duration)
+        samples *= envelope.get_output(sample_count, sample_duration)
 
         if self._base_pcm:
             samples += self._base_pcm.samples

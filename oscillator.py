@@ -11,7 +11,8 @@ class Oscillator:
         self.phase = phase
 
     def get_output(self, sample_count, sample_duration):
+        
+        start = self.phase
+        end = self.phase + 2 * math.pi * self.frequency * sample_duration * sample_count
 
-        time_points = numpy.arange(0, sample_count * sample_duration, sample_duration)
-
-        return numpy.sin(time_points * (2 * math.pi * self.frequency) + self.phase)
+        return numpy.sin(numpy.linspace(start, end, sample_count))
