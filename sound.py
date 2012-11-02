@@ -24,7 +24,7 @@ class Spectrum:
 
         amplitudes = scipy.fftpack.rfft(samples * self._windows[len(samples)])
 
-        self._magnitudes = numpy.abs(amplitudes[1:])
+        self._magnitudes = numpy.abs(amplitudes[1:]) # TODO: remove unaudible frequencies
 
     @property
     def magnitudes(self):
@@ -57,6 +57,7 @@ class Sound(GenomeBase):
         self.evaluator.set(self._evaluate)
 
         self._frequency = 0
+        self._phase = 0
         self._time_points = []
         self._amplitudes = []
 
@@ -65,25 +66,28 @@ class Sound(GenomeBase):
 
         self._base_pcm = base_pcm
 
-        amplitudes = numpy.abs(reference_pcm_audio.samples)
-        self._minimal_amplitude = numpy.min(amplitudes)
-        self._maximal_amplitude = numpy.max(amplitudes)
+        self._maximal_amplitude = numpy.abs(reference_pcm_audio.samples).max()
 
     @classmethod
     def _initialize(cls, sound):
         sound._frequency = cls.random_frequency()
+        sound._phase = cls.random_phase()
         sound._time_points = [random.random() for _ in xrange(cls._point_count)]
         sound._amplitudes = [sound.random_amplitude() for _ in xrange(cls._point_count)]
 
-    @classmethod
-    def _mutate(cls, sound, **kwargs):
+    @staticmethod
+    def _mutate(sound, **kwargs):
 
         mutation_probability = kwargs["pmut"]
 
         mutation_count = 1
 
         if pyevolve.Util.randomFlipCoin(mutation_probability):
-            sound._frequency = cls.random_frequency()
+            sound._frequency = sound.random_frequency()
+            mutation_count += 1
+
+        if pyevolve.Util.randomFlipCoin(mutation_probability):
+            sound._phase = sound.random_phase()
             mutation_count += 1
 
         for index, (time, amplitude) in enumerate(zip(sound._time_points, sound._amplitudes)):
@@ -107,6 +111,9 @@ class Sound(GenomeBase):
 
             child._frequency = random.uniform(
                 first_parent._frequency, second_parent._frequency)
+
+            child._phase = random.uniform(
+                first_parent._phase, second_parent._phase)
 
             _1 = list(zip(first_parent._time_points, first_parent._amplitudes))
             _1.sort(key=lambda point: point[0])
@@ -166,9 +173,9 @@ class Sound(GenomeBase):
         other._reference_spectrum_list = self._reference_spectrum_list
         other._base_pcm = self._base_pcm
         other._frequency = self._frequency
+        other._phase = self._phase
         other._time_points = self._time_points[:]
         other._amplitudes = self._amplitudes[:]
-        other._minimal_amplitude = self._minimal_amplitude
         other._maximal_amplitude = self._maximal_amplitude
 
     def clone(self):
@@ -181,10 +188,10 @@ class Sound(GenomeBase):
         sample_count = len(self._reference_pcm_audio.samples)
         sample_duration = self._reference_pcm_audio.duration / sample_count
 
-        oscillator = Oscillator(self._frequency)
+        oscillator = Oscillator(self._frequency, self._phase)
         envelope = AmplitudeEnvelope(0)
         for time, amplitude in zip(self._time_points, self._amplitudes):
-            envelope.add_point(time * sample_count * sample_duration, amplitude)
+            envelope.add_point(time * self._reference_pcm_audio.duration, amplitude)
 
         samples = oscillator.get_output(sample_count, sample_duration) * envelope.get_output(sample_count, sample_duration)
 
@@ -201,12 +208,17 @@ class Sound(GenomeBase):
         return '\n'.join(
             (
                 "Frequency: %.1f Hz" % self._frequency,
+                "Phase: %.2f" % self._phase,
                 "Amplitude envelope: %s" % str(points)
             ))
 
     def random_amplitude(self):
-        return random.randint(self._minimal_amplitude, self._maximal_amplitude)
+        return random.randint(0, self._maximal_amplitude)
 
     @classmethod
     def random_frequency(cls):
         return random.uniform(cls._minimal_frequency, cls._maximal_frequency)
+
+    @staticmethod
+    def random_phase():
+        return random.uniform(0, 2 * numpy.pi)
