@@ -1,16 +1,16 @@
 import numpy
 
 
-class AmplitudeEnvelope:
+class Envelope:
 
-    def __init__(self, amplitude=1.0):
+    def __init__(self, initial_value=1.0):
 
         self.__points = list()
-        self.add_point(0, amplitude)
+        self.add_point(0, initial_value)
 
-    def add_point(self, time, amplitude):
+    def add_point(self, time, value):
 
-        self.__points.append((time, amplitude))
+        self.__points.append((time, value))
 
     def get_output(self, sample_count, sample_duration):
 

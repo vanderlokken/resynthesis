@@ -7,7 +7,7 @@ from algorithm import Genome
 import numpy
 import scipy.fftpack
 
-from amplitude_envelope import AmplitudeEnvelope
+from envelope import Envelope
 from oscillator import Oscillator
 from pcm_audio import PcmAudio
 
@@ -153,7 +153,7 @@ class Sound(Genome):
         sample_duration = self._reference_pcm_audio.duration / sample_count
 
         oscillator = Oscillator(self._frequency, self._phase)
-        envelope = AmplitudeEnvelope(0)
+        envelope = Envelope(0)
         for time, amplitude in zip(self._time_points, self._amplitudes):
             envelope.add_point(time * self._reference_pcm_audio.duration, amplitude)
 
