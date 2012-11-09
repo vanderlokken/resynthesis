@@ -1,5 +1,5 @@
 from algorithm import GeneticAlgorithm, Population
-from sound import Sound
+from sound import get_sound_factory
 
 
 def resynthesize(reference_pcm_audio):
@@ -13,19 +13,19 @@ def resynthesize(reference_pcm_audio):
 
     algorithm = GeneticAlgorithm()
 
-    pcm = None
+    pcm_audio = None
 
     for index in range(4):
 
-        genome_factory = lambda: Sound(reference_pcm_audio, pcm)
+        genome_factory = get_sound_factory(reference_pcm_audio, pcm_audio)
         population = Population(genome_factory, 80)
         best_sound = algorithm.run(population)
 
         print best_sound
-        print "Rank: %.2f" % Sound.evaluate(best_sound)
+        print "Score: %.2f" % best_sound.score
 
-        pcm = best_sound.to_pcm_audio()
+        pcm_audio = best_sound.to_pcm_audio()
 
-        pcm.to_wave_file("debug%d.wav" % index)
+        pcm_audio.to_wave_file("debug%d.wav" % index)
 
-    return pcm
+    return pcm_audio

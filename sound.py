@@ -39,23 +39,16 @@ def _generate_spectrum_list(pcm_audio, window_size=4096):
     return [Spectrum(window(index)) for index in range(window_count)]
 
 
-class Sound(Genome):
+class _Sound(Genome):
 
     _minimal_frequency = 40
     _maximal_frequency = 4200
 
     _point_count = 5
     
-    def __init__(self, reference_pcm_audio, base_pcm=None):
+    def __init__(self):
 
         Genome.__init__(self)
-
-        self._reference_pcm_audio = reference_pcm_audio
-        self._reference_spectrum_list = _generate_spectrum_list(reference_pcm_audio)
-
-        self._base_pcm = base_pcm
-
-        self._maximal_amplitude = numpy.abs(reference_pcm_audio.samples).max()
 
         self._frequency = self.random_frequency()
         self._phase = self.random_phase()
@@ -160,8 +153,8 @@ class Sound(Genome):
         samples = oscillator.get_output(sample_count, sample_duration)
         samples *= envelope.get_output(sample_count, sample_duration)
 
-        if self._base_pcm:
-            samples += self._base_pcm.samples
+        if self._base_pcm_audio:
+            samples += self._base_pcm_audio.samples
 
         return PcmAudio(self._reference_pcm_audio.sampling_rate, samples)
 
@@ -187,3 +180,15 @@ class Sound(Genome):
     @staticmethod
     def random_phase():
         return random.uniform(0, 2 * numpy.pi)
+
+
+def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
+
+    class Sound(_Sound):
+
+        _reference_pcm_audio = reference_pcm_audio
+        _reference_spectrum_list = _generate_spectrum_list(reference_pcm_audio)
+        _base_pcm_audio = base_pcm_audio
+        _maximal_amplitude = numpy.abs(reference_pcm_audio.samples).max()
+
+    return Sound
