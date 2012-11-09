@@ -52,8 +52,12 @@ class _Sound(Genome):
 
         self._frequency = self.random_frequency()
         self._phase = self.random_phase()
-        self._time_points = [random.random() for _ in xrange(self._point_count)]
-        self._amplitudes = [self.random_amplitude() for _ in xrange(self._point_count)]
+
+        random_point = lambda: Envelope.Point(
+            time=self.random_time(), value=self.random_amplitude())
+
+        self._amplitude_envelope_points = [
+            random_point() for _ in xrange(self._point_count)]
 
     def mutate(self, rate):
 
@@ -67,56 +71,58 @@ class _Sound(Genome):
             self._phase = self.random_phase()
             mutated = True
 
-        for index, (time, amplitude) in enumerate(zip(self._time_points, self._amplitudes)):
+        # A simple alias
+        points = self._amplitude_envelope_points
+
+        for index in xrange(self._point_count):
 
             if random.random() <= rate:
-                self._time_points[index] = random.random()
+                points[index] = points[index]._replace(time=self.random_time())
                 mutated = True
 
             if random.random() <= rate:
-                self._amplitudes[index] = self.random_amplitude()
+                points[index] = points[index]._replace(
+                    value=self.random_amplitude())
                 mutated = True
 
         return mutated
 
     def cross(self, other):
 
-        def create_child(first_parent, second_parent):
+        child_factory = type(self)
+        first_child, second_child = child_factory(), child_factory()
 
-            child = copy.copy(first_parent)
+        def child_value_pair(first_parent_value, second_parent_value):
+            first_child_value = random.uniform(
+                first_parent_value, second_parent_value)
+            second_child_value = \
+                first_parent_value + second_parent_value - first_child_value
+            return first_child_value, second_child_value
 
-            child._frequency = random.uniform(
-                first_parent._frequency, second_parent._frequency)
+        first_child._frequency, second_child._frequency = child_value_pair(
+            self._frequency, other._frequency)
+        first_child._phase, second_child._phase = child_value_pair(
+            self._phase, other._phase)
 
-            child._phase = random.uniform(
-                first_parent._phase, second_parent._phase)
+        self._amplitude_envelope_points.sort(key=lambda point: point.time)
+        other._amplitude_envelope_points.sort(key=lambda point: point.time)
 
-            _1 = list(zip(first_parent._time_points, first_parent._amplitudes))
-            _1.sort(key=lambda point: point[0])
+        for index in xrange(self._point_count):
 
-            _2 = list(zip(second_parent._time_points, second_parent._amplitudes))
-            _2.sort(key=lambda point: point[0])
+            first_time, second_time = child_value_pair(
+                self._amplitude_envelope_points[index].time,
+                other._amplitude_envelope_points[index].time)
 
-            child._time_points = child._time_points[:]
-            child._amplitudes = child._amplitudes[:]
+            first_amplitude, second_amplitude = child_value_pair(
+                self._amplitude_envelope_points[index].value,
+                other._amplitude_envelope_points[index].value)
 
-            for index in range(len(_1)):
+            first_child._amplitude_envelope_points[index] = Envelope.Point(
+                first_time, first_amplitude)
+            second_child._amplitude_envelope_points[index] = Envelope.Point(
+                second_time, second_amplitude)
 
-                child._time_points[index] = random.uniform(
-                    _1[index][0], _2[index][0])
-
-                child._amplitudes[index] = random.uniform(
-                    _1[index][1], _2[index][1])
-
-            return child
-
-        first_child = create_child(self, other)
-        second_child = create_child(self, other)
-
-        first_child.reset_score()
-        second_child.reset_score()
-
-        return (first_child, second_child)
+        return first_child, second_child
 
     def evaluate(self):
 
@@ -147,8 +153,8 @@ class _Sound(Genome):
 
         oscillator = Oscillator(self._frequency, self._phase)
         envelope = Envelope(0)
-        for time, amplitude in zip(self._time_points, self._amplitudes):
-            envelope.add_point(time * self._reference_pcm_audio.duration, amplitude)
+        for point in self._amplitude_envelope_points:
+            envelope.add_point(point)
 
         samples = oscillator.get_output(sample_count, sample_duration)
         samples *= envelope.get_output(sample_count, sample_duration)
@@ -160,15 +166,18 @@ class _Sound(Genome):
 
     def __repr__(self):
 
-        points = list(zip(self._time_points, self._amplitudes))
-        points.sort(key=lambda point: point[0])
+        self._amplitude_envelope_points.sort(key=lambda point: point.time)
 
         return '\n'.join(
             (
+                "Score: %.2f" % self.score,
                 "Frequency: %.1f Hz" % self._frequency,
                 "Phase: %.2f" % self._phase,
-                "Amplitude envelope: %s" % str(points)
+                "Amplitude envelope: %s" % str(self._amplitude_envelope_points)
             ))
+
+    def random_time(self):
+        return random.random() * self._reference_pcm_audio.duration
 
     def random_amplitude(self):
         return random.randint(0, self._maximal_amplitude)

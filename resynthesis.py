@@ -5,11 +5,11 @@ from sound import get_sound_factory
 def resynthesize(reference_pcm_audio):
 
     # Frequency: 390.2 Hz
-    # Phase: 3.18
-    # Amplitude envelope: [(0.05494893182272953, 1225.3010040521226), (0.0978622683442
-    # 7864, 1697.3921809393846), (0.1860495274287318, 930.2889125564799), (0.288980495
-    # 3603544, 431.5297860228603), (0.567903772948726, 120.7427716562857)]
-    # Rank: 0.79
+    # Phase: 3.46
+    # Amplitude envelope: [(0.027701006219742898, 2602.3552948434503), (0.067593186648
+    # 14702, 1844.6025509563485), (0.128719433053636, 1070.337633014105), (0.288116126
+    # 97729155, 451.8047113416502), (0.6915564235579005, 68.6864594455799)]
+    # Score: 0.80
 
     algorithm = GeneticAlgorithm()
 
@@ -22,7 +22,6 @@ def resynthesize(reference_pcm_audio):
         best_sound = algorithm.run(population)
 
         print best_sound
-        print "Score: %.2f" % best_sound.score
 
         pcm_audio = best_sound.to_pcm_audio()
 

@@ -91,19 +91,24 @@ class GeneticAlgorithm(object):
     def __init__(self):
         self.generation_limit = 50
         self.selection_rate = 0.5
-        self.mutation_rate = 0.2
-        self.elitism_rate = 0.1
+        self.mutation_rate = 0.1
+        self.elitism_rate = 0.15
+        self.mutation_decrease_rate = 0.0
 
     def run(self, population):
+
+        current_mutation_rate = self.mutation_rate
 
         for generation_index in xrange(self.generation_limit):
 
             population.select(self.selection_rate)
             population.crossbreed()
-            population.mutate(self.mutation_rate)
+            population.mutate(current_mutation_rate)
             population.advance_generation(self.elitism_rate)
 
             population.output_statistics()
+
+            current_mutation_rate *= 1 - self.mutation_decrease_rate
 
         return population.best_genome
 
