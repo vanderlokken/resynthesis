@@ -115,7 +115,7 @@ class GeneticAlgorithm(object):
 
 def _prepare_logging():
     logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler(stream=sys.stdout)
+    handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(
         logging.Formatter("[%(asctime)s] %(name)s %(message)s", "%X"))
     logger.addHandler(handler)
