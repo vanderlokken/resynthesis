@@ -142,7 +142,7 @@ class _Sound(Genome):
             magnitude_rank = 1 / (1 + 
                 numpy.abs(spectrum2.magnitudes - spectrum1.magnitudes).sum() / spectrum1.magnitudes.sum())
 
-            ranks.append(frequency_rank + magnitude_rank)
+            ranks.append((frequency_rank + magnitude_rank) / 2)
 
         return numpy.average(ranks)
 
