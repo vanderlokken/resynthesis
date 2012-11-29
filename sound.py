@@ -14,34 +14,42 @@ from pcm_audio import PcmAudio
 
 class Spectrum:
 
-    _windows = {}
+    __windows = {}
 
     def __init__(self, samples):
+        window = self.__get_window(len(samples))
+        self.__magnitudes = numpy.abs(scipy.fftpack.rfft(samples * window))
 
-        if len(samples) not in self._windows:
-            self._windows[len(samples)] = numpy.hanning(len(samples))
-
-        amplitudes = scipy.fftpack.rfft(samples * self._windows[len(samples)])
-
-        self._magnitudes = numpy.abs(amplitudes[1:]) # TODO: remove unaudible frequencies
+    @classmethod
+    def __get_window(cls, length):
+        window = cls.__windows.get(length)
+        return window if window is not None else cls.__windows.setdefault(
+            length, numpy.hanning(length))
 
     @property
     def magnitudes(self):
-        return self._magnitudes
+        return self.__magnitudes
 
 
-def _generate_spectrum_list(pcm_audio, window_size=4096):
+def _generate_frames_spectrums(
+        pcm_audio, frame_size=4096, overlapping_size=2048):
 
-    window_count = len(pcm_audio.samples) / window_size
-    window = lambda index: \
-        pcm_audio.samples[index * window_size : (index + 1) * window_size]
+    sample_count = len(pcm_audio.samples)
 
-    return [Spectrum(window(index)) for index in range(window_count)]
+    frame_count = int(numpy.floor(
+        (sample_count - frame_size) / (frame_size - overlapping_size)) + 1)
+    
+    def frame(index):
+        start_sample_index = index * (frame_size - overlapping_size)
+        return pcm_audio.samples[
+            start_sample_index : start_sample_index + frame_size]
+
+    return [Spectrum(frame(index)) for index in xrange(frame_count)]
 
 
 class _Sound(Genome):
 
-    _minimal_frequency = 40
+    _minimal_frequency = 20
     _maximal_frequency = 4200
 
     _point_count = 5
@@ -127,20 +135,29 @@ class _Sound(Genome):
     def evaluate(self):
 
         generated_pcm_audio = self.to_pcm_audio()
-        generated_spectrum_list = _generate_spectrum_list(generated_pcm_audio)
+        generated_frames_spectrums =\
+            _generate_frames_spectrums(generated_pcm_audio)
 
         ranks = []
 
         for spectrum1, spectrum2 in zip(
-                self._reference_spectrum_list, generated_spectrum_list):
+                self._reference_frames_spectrums, generated_frames_spectrums):
 
-            squared = spectrum1.magnitudes * spectrum1.magnitudes
+            # Remove unaudible frequencies
+            frequency_step = (self._reference_pcm_audio.sampling_rate * 0.5 /
+                len(spectrum1.magnitudes))
+            lower_bound =\
+                int(numpy.ceil(self._minimal_frequency / frequency_step))
+            magnitudes1 = spectrum1.magnitudes[lower_bound:]
+            magnitudes2 = spectrum2.magnitudes[lower_bound:]
+
+            squared = magnitudes1 * magnitudes1
 
             frequency_rank = numpy.minimum(
-                spectrum1.magnitudes * spectrum2.magnitudes, squared).sum() / squared.sum()
+                magnitudes1 * magnitudes2, squared).sum() / squared.sum()
 
             magnitude_rank = 1 / (1 + 
-                numpy.abs(spectrum2.magnitudes - spectrum1.magnitudes).sum() / spectrum1.magnitudes.sum())
+                numpy.abs(magnitudes2 - magnitudes1).sum() / magnitudes1.sum())
 
             ranks.append((frequency_rank + magnitude_rank) / 2)
 
@@ -196,7 +213,8 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
     class Sound(_Sound):
 
         _reference_pcm_audio = reference_pcm_audio
-        _reference_spectrum_list = _generate_spectrum_list(reference_pcm_audio)
+        _reference_frames_spectrums =\
+            _generate_frames_spectrums(reference_pcm_audio)
         _base_pcm_audio = base_pcm_audio
         _maximal_amplitude = numpy.abs(reference_pcm_audio.samples).max()
 
