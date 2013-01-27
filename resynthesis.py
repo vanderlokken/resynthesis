@@ -13,6 +13,7 @@ def resynthesize(reference_pcm_audio):
 
     algorithm = GeneticAlgorithm()
 
+    best_score = 0
     pcm_audio = None
 
     for index in range(4):
@@ -21,10 +22,14 @@ def resynthesize(reference_pcm_audio):
         population = Population(genome_factory, 80)
         best_sound = algorithm.run(population)
 
+        if best_sound.score < best_score:
+            print "The algorithm failed to produce a better sound on this step"
+            continue
+
         print best_sound
-
         pcm_audio = best_sound.to_pcm_audio()
-
         pcm_audio.to_wave_file("debug%d.wav" % index)
+
+        best_score = best_sound.score
 
     return pcm_audio

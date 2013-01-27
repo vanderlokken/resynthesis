@@ -89,7 +89,8 @@ class Population(object):
 class GeneticAlgorithm(object):
 
     def __init__(self):
-        self.generation_limit = 50
+        self.generation_limit = sys.maxint
+        self.generations_without_improvement_limit = 50
         self.selection_rate = 0.5
         self.mutation_rate = 0.1
         self.elitism_rate = 0.15
@@ -99,6 +100,9 @@ class GeneticAlgorithm(object):
 
         current_mutation_rate = self.mutation_rate
 
+        best_score = 0
+        generations_without_improvement = 0
+
         for generation_index in xrange(self.generation_limit):
 
             population.select(self.selection_rate)
@@ -107,6 +111,16 @@ class GeneticAlgorithm(object):
             population.advance_generation(self.elitism_rate)
 
             population.output_statistics()
+
+            if population.best_genome.score <= best_score:
+                generations_without_improvement += 1
+            else:
+                best_score = population.best_genome.score
+                generations_without_improvement = 0
+
+            if generations_without_improvement ==\
+                    self.generations_without_improvement_limit:
+                break
 
             current_mutation_rate *= 1 - self.mutation_decrease_rate
 
