@@ -38,7 +38,7 @@ def _generate_frames_spectrums(
 
     frame_count = int(numpy.floor(
         (sample_count - frame_size) / (frame_size - overlapping_size)) + 1)
-    
+
     def frame(index):
         start_sample_index = index * (frame_size - overlapping_size)
         return pcm_audio.samples[
@@ -53,7 +53,7 @@ class _Sound(Genome):
     _maximal_frequency = 4200
 
     _point_count = 5
-    
+
     def __init__(self):
 
         Genome.__init__(self)
@@ -79,18 +79,14 @@ class _Sound(Genome):
             self._phase = self.random_phase()
             mutated = True
 
-        # A simple alias
-        points = self._amplitude_envelope_points
-
-        for index in xrange(self._point_count):
+        for point in self._amplitude_envelope_points:
 
             if random.random() <= rate:
-                points[index] = points[index]._replace(time=self.random_time())
+                point.time = self.random_time()
                 mutated = True
 
             if random.random() <= rate:
-                points[index] = points[index]._replace(
-                    value=self.random_amplitude())
+                point.value = self.random_amplitude()
                 mutated = True
 
         return mutated
@@ -115,20 +111,23 @@ class _Sound(Genome):
         self._amplitude_envelope_points.sort(key=lambda point: point.time)
         other._amplitude_envelope_points.sort(key=lambda point: point.time)
 
-        for index in xrange(self._point_count):
+        first_child._amplitude_envelope_points = []
+        second_child._amplitude_envelope_points = []
+
+        for self_point, other_point in zip(
+                self._amplitude_envelope_points,
+                other._amplitude_envelope_points):
 
             first_time, second_time = child_value_pair(
-                self._amplitude_envelope_points[index].time,
-                other._amplitude_envelope_points[index].time)
+                self_point.time, other_point.time)
 
             first_amplitude, second_amplitude = child_value_pair(
-                self._amplitude_envelope_points[index].value,
-                other._amplitude_envelope_points[index].value)
+                self_point.value, other_point.value)
 
-            first_child._amplitude_envelope_points[index] = Envelope.Point(
-                first_time, first_amplitude)
-            second_child._amplitude_envelope_points[index] = Envelope.Point(
-                second_time, second_amplitude)
+            first_child._amplitude_envelope_points.append(
+                Envelope.Point(first_time, first_amplitude))
+            second_child._amplitude_envelope_points.append(
+                Envelope.Point(second_time, second_amplitude))
 
         return first_child, second_child
 
@@ -156,7 +155,7 @@ class _Sound(Genome):
             frequency_rank = numpy.minimum(
                 magnitudes1 * magnitudes2, squared).sum() / squared.sum()
 
-            magnitude_rank = 1 / (1 + 
+            magnitude_rank = 1 / (1 +
                 numpy.abs(magnitudes2 - magnitudes1).sum() / magnitudes1.sum())
 
             ranks.append((frequency_rank + magnitude_rank) / 2)

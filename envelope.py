@@ -1,11 +1,12 @@
-from collections import namedtuple
-
 import numpy
 
 
 class Envelope:
 
-    Point = namedtuple('Point', ['time', 'value'])
+    class Point:
+        def __init__(self, time, value):
+            self.time = time
+            self.value = value
 
     def __init__(self, initial_value=1.0):
 
