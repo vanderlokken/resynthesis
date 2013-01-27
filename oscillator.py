@@ -1,5 +1,3 @@
-import math
-
 import numpy
 
 
@@ -20,10 +18,11 @@ class Oscillator:
     def _get_sine_output(self, sample_count, sample_duration):
 
         start = self.phase
-        end = self.phase + 2 * math.pi * (
+        end = start + 2 * numpy.pi * (
             self.frequency * sample_duration * sample_count)
 
-        return numpy.sin(numpy.linspace(start, end, sample_count))
+        array = numpy.linspace(start, end, sample_count)
+        return numpy.sin(array, out=array)
 
     def _get_sawtooth_output(self, sample_count, sample_duration):
 

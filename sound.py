@@ -17,14 +17,18 @@ class Spectrum:
     __windows = {}
 
     def __init__(self, samples):
-        window = self.__get_window(len(samples))
-        self.__magnitudes = numpy.abs(scipy.fftpack.rfft(samples * window))
+        """ Note: this function modifies the contents of 'samples' """
+        self.__apply_window_function(samples)
+        fft_result = scipy.fftpack.rfft(samples, overwrite_x=True)
+        self.__magnitudes = numpy.abs(fft_result, out=fft_result)
 
     @classmethod
-    def __get_window(cls, length):
+    def __apply_window_function(cls, samples):
+        length = len(samples)
         window = cls.__windows.get(length)
-        return window if window is not None else cls.__windows.setdefault(
-            length, numpy.hanning(length))
+        if window is None:
+            window = cls.__windows[length] = numpy.hanning(length)
+        samples *= window
 
     @property
     def magnitudes(self):
@@ -41,8 +45,8 @@ def _generate_frames_spectrums(
 
     def frame(index):
         start_sample_index = index * (frame_size - overlapping_size)
-        return pcm_audio.samples[
-            start_sample_index : start_sample_index + frame_size]
+        return numpy.array(pcm_audio.samples[
+            start_sample_index : start_sample_index + frame_size])
 
     return [Spectrum(frame(index)) for index in xrange(frame_count)]
 
@@ -61,11 +65,11 @@ class _Sound(Genome):
         self._frequency = self.random_frequency()
         self._phase = self.random_phase()
 
-        random_point = lambda: Envelope.Point(
-            time=self.random_time(), value=self.random_amplitude())
-
         self._amplitude_envelope_points = [
-            random_point() for _ in xrange(self._point_count)]
+            Envelope.Point(time=self.random_time(),
+                           value=self.random_amplitude())
+            for _ in xrange(self._point_count)
+        ]
 
     def mutate(self, rate):
 
@@ -133,9 +137,8 @@ class _Sound(Genome):
 
     def evaluate(self):
 
-        generated_pcm_audio = self.to_pcm_audio()
         generated_frames_spectrums =\
-            _generate_frames_spectrums(generated_pcm_audio)
+            _generate_frames_spectrums(self.to_pcm_audio())
 
         ranks = []
 
@@ -192,11 +195,13 @@ class _Sound(Genome):
                 "Amplitude envelope: %s" % str(self._amplitude_envelope_points)
             ))
 
-    def random_time(self):
-        return random.random() * self._reference_pcm_audio.duration
+    @classmethod
+    def random_time(cls):
+        return random.uniform(0, cls._reference_pcm_audio.duration)
 
-    def random_amplitude(self):
-        return random.randint(0, self._maximal_amplitude)
+    @classmethod
+    def random_amplitude(cls):
+        return random.randint(0, cls._maximal_amplitude)
 
     @classmethod
     def random_frequency(cls):
