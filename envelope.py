@@ -8,6 +8,9 @@ class Envelope:
             self.time = time
             self.value = value
 
+        def __repr__(self):
+            return "(time=%f, value=%f)" % (self.time, self.value)
+
     def __init__(self, initial_value=1.0):
 
         self.__points = list()

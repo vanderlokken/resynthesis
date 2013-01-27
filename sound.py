@@ -20,7 +20,7 @@ class Spectrum:
         """ Note: this function modifies the contents of 'samples' """
         self.__apply_window_function(samples)
         fft_result = scipy.fftpack.rfft(samples, overwrite_x=True)
-        self.__magnitudes = numpy.abs(fft_result, out=fft_result)
+        self.magnitudes = numpy.abs(fft_result, out=fft_result)
 
     @classmethod
     def __apply_window_function(cls, samples):
@@ -30,25 +30,32 @@ class Spectrum:
             window = cls.__windows[length] = numpy.hanning(length)
         samples *= window
 
-    @property
-    def magnitudes(self):
-        return self.__magnitudes
-
 
 def _generate_frames_spectrums(
-        pcm_audio, frame_size=4096, overlapping_size=2048):
+        pcm_audio, frame_size=4096, overlapping_size=2048,
+        minimal_frequency=20):
 
     sample_count = len(pcm_audio.samples)
-
     frame_count = int(numpy.floor(
         (sample_count - frame_size) / (frame_size - overlapping_size)) + 1)
 
-    def frame(index):
-        start_sample_index = index * (frame_size - overlapping_size)
-        return numpy.array(pcm_audio.samples[
-            start_sample_index : start_sample_index + frame_size])
+    frames_spectrums = []
 
-    return [Spectrum(frame(index)) for index in xrange(frame_count)]
+    for frame_index in xrange(frame_count):
+
+        sample_index = frame_index * (frame_size - overlapping_size)
+        samples = numpy.array(
+            pcm_audio.samples[sample_index : sample_index + frame_size])
+        spectrum = Spectrum(samples)
+        frames_spectrums.append(spectrum)
+
+        # Remove unaudible frequencies
+        frequency_step = (
+            pcm_audio.sampling_rate * 0.5 / len(spectrum.magnitudes))
+        lower_bound = int(numpy.ceil(minimal_frequency / frequency_step))
+        spectrum.magnitudes = spectrum.magnitudes[lower_bound:]
+
+    return frames_spectrums
 
 
 class _Sound(Genome):
@@ -145,13 +152,8 @@ class _Sound(Genome):
         for spectrum1, spectrum2 in zip(
                 self._reference_frames_spectrums, generated_frames_spectrums):
 
-            # Remove unaudible frequencies
-            frequency_step = (self._reference_pcm_audio.sampling_rate * 0.5 /
-                len(spectrum1.magnitudes))
-            lower_bound =\
-                int(numpy.ceil(self._minimal_frequency / frequency_step))
-            magnitudes1 = spectrum1.magnitudes[lower_bound:]
-            magnitudes2 = spectrum2.magnitudes[lower_bound:]
+            magnitudes1 = spectrum1.magnitudes
+            magnitudes2 = spectrum2.magnitudes
 
             squared = magnitudes1 * magnitudes1
 
