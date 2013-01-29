@@ -83,21 +83,19 @@ class _Sound(Genome):
         mutated = False
 
         if random.random() <= rate:
-            self._frequency = self.random_frequency()
+            self._frequency = random.uniform(
+                self._frequency, self.random_frequency())
             mutated = True
 
         if random.random() <= rate:
-            self._phase = self.random_phase()
+            self._phase = random.uniform(self._phase, self.random_phase())
             mutated = True
 
         for point in self._amplitude_envelope_points:
-
             if random.random() <= rate:
-                point.time = self.random_time()
-                mutated = True
-
-            if random.random() <= rate:
-                point.value = self.random_amplitude()
+                point.time = random.uniform(point.time, self.random_time())
+                point.value = random.uniform(
+                    point.value, self.random_amplitude())
                 mutated = True
 
         return mutated
@@ -169,16 +167,13 @@ class _Sound(Genome):
 
     def to_pcm_audio(self):
 
-        sample_count = len(self._reference_pcm_audio.samples)
-        sample_duration = self._reference_pcm_audio.duration / sample_count
-
         oscillator = Oscillator(self._frequency, self._phase)
         envelope = Envelope(0)
         for point in self._amplitude_envelope_points:
             envelope.add_point(point)
 
-        samples = oscillator.get_output(sample_count, sample_duration)
-        samples *= envelope.get_output(sample_count, sample_duration)
+        samples = oscillator.get_output(self._sample_times)
+        samples *= envelope.get_output(self._sample_times)
 
         if self._base_pcm_audio:
             samples += self._base_pcm_audio.samples
@@ -223,5 +218,8 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
             _generate_frames_spectrums(reference_pcm_audio)
         _base_pcm_audio = base_pcm_audio
         _maximal_amplitude = numpy.abs(reference_pcm_audio.samples).max()
+
+        _sample_times = numpy.linspace(
+            0, reference_pcm_audio.duration, len(reference_pcm_audio.samples))
 
     return Sound

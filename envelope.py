@@ -20,13 +20,11 @@ class Envelope:
 
         self.__points.append(point)
 
-    def get_output(self, sample_count, sample_duration):
+    def get_output(self, time_points):
 
         self.__points.sort(key=lambda point: point.time)
 
         x = numpy.fromiter((point.time for point in self.__points), numpy.float)
         y = numpy.fromiter((point.value for point in self.__points), numpy.float)
-
-        time_points = numpy.linspace(0, sample_count * sample_duration, sample_count)
 
         return numpy.interp(time_points, x, y)

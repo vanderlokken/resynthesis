@@ -15,18 +15,12 @@ class Oscillator:
 
         self.get_output = output_method_by_wave[wave]
 
-    def _get_sine_output(self, sample_count, sample_duration):
+    def _get_sine_output(self, time_points):
+        arguments = (2 * numpy.pi * self.frequency) * time_points
+        arguments += self.phase
+        return numpy.sin(arguments, out=arguments)
 
-        start = self.phase
-        end = start + 2 * numpy.pi * (
-            self.frequency * sample_duration * sample_count)
-
-        array = numpy.linspace(start, end, sample_count)
-        return numpy.sin(array, out=array)
-
-    def _get_sawtooth_output(self, sample_count, sample_duration):
-
-        start = self.phase
-        end = self.phase + sample_duration * sample_count * self.frequency
-
-        return numpy.modf(numpy.linspace(start, end, sample_count))[0] * 2 - 1
+    def _get_sawtooth_output(self, time_points):
+        arguments = self.frequency * time_points
+        arguments += self.phase
+        return numpy.modf(arguments)[0] * 2 - 1
