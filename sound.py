@@ -105,17 +105,30 @@ class _Sound(Genome):
         child_factory = type(self)
         first_child, second_child = child_factory(), child_factory()
 
-        def child_value_pair(first_parent_value, second_parent_value):
-            first_child_value = random.uniform(
-                first_parent_value, second_parent_value)
-            second_child_value = \
-                first_parent_value + second_parent_value - first_child_value
+        def child_value_pair(
+                first_parent_value, second_parent_value,
+                minimal_value, maximal_value):
+
+            mean = (first_parent_value + second_parent_value) / 2
+            standard_deviation = abs(first_parent_value - mean)
+
+            first_child_value = random.normalvariate(mean, standard_deviation)
+            second_child_value = random.normalvariate(mean, standard_deviation)
+
+            first_child_value = max(first_child_value, minimal_value)
+            second_child_value = max(second_child_value, minimal_value)
+
+            first_child_value = min(first_child_value, maximal_value)
+            second_child_value = min(second_child_value, maximal_value)
+
             return first_child_value, second_child_value
 
         first_child._frequency, second_child._frequency = child_value_pair(
-            self._frequency, other._frequency)
+            self._frequency, other._frequency,
+            self._minimal_frequency, self._maximal_frequency)
+
         first_child._phase, second_child._phase = child_value_pair(
-            self._phase, other._phase)
+            self._phase, other._phase, 0, 2 * numpy.pi)
 
         self._amplitude_envelope_points.sort(key=lambda point: point.time)
         other._amplitude_envelope_points.sort(key=lambda point: point.time)
@@ -128,10 +141,11 @@ class _Sound(Genome):
                 other._amplitude_envelope_points):
 
             first_time, second_time = child_value_pair(
-                self_point.time, other_point.time)
+                self_point.time, other_point.time,
+                0, self._reference_pcm_audio.duration)
 
             first_amplitude, second_amplitude = child_value_pair(
-                self_point.value, other_point.value)
+                self_point.value, other_point.value, 0, self._maximal_amplitude)
 
             first_child._amplitude_envelope_points.append(
                 Envelope.Point(first_time, first_amplitude))
@@ -153,17 +167,16 @@ class _Sound(Genome):
             magnitudes1 = spectrum1.magnitudes
             magnitudes2 = spectrum2.magnitudes
 
-            squared = magnitudes1 * magnitudes1
+            array = magnitudes2 - magnitudes1
+            array = numpy.square(array, out=array)
+            x = array.sum()
 
-            frequency_rank = numpy.minimum(
-                magnitudes1 * magnitudes2, squared).sum() / squared.sum()
+            array = numpy.square(magnitudes1, out=array)
+            y = array.sum()
 
-            magnitude_rank = 1 / (1 +
-                numpy.abs(magnitudes2 - magnitudes1).sum() / magnitudes1.sum())
+            ranks.append(x / y)
 
-            ranks.append((frequency_rank + magnitude_rank) / 2)
-
-        return numpy.average(ranks)
+        return -numpy.mean(ranks)
 
     def to_pcm_audio(self):
 
