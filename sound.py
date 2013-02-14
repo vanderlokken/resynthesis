@@ -14,21 +14,10 @@ from pcm_audio import PcmAudio
 
 class Spectrum:
 
-    __windows = {}
-
     def __init__(self, samples):
         """ Note: this function modifies the contents of 'samples' """
-        self.__apply_window_function(samples)
         fft_result = scipy.fftpack.rfft(samples, overwrite_x=True)
         self.magnitudes = numpy.abs(fft_result, out=fft_result)
-
-    @classmethod
-    def __apply_window_function(cls, samples):
-        length = len(samples)
-        window = cls.__windows.get(length)
-        if window is None:
-            window = cls.__windows[length] = numpy.hanning(length)
-        samples *= window
 
 
 def _generate_frames_spectrums(
@@ -61,7 +50,7 @@ def _generate_frames_spectrums(
 class _Sound(Genome):
 
     _minimal_frequency = 20
-    _maximal_frequency = 4200
+    _maximal_frequency = 20000
 
     _point_count = 5
 
@@ -130,8 +119,8 @@ class _Sound(Genome):
         first_child._phase, second_child._phase = child_value_pair(
             self._phase, other._phase, 0, 2 * numpy.pi)
 
-        self._amplitude_envelope_points.sort(key=lambda point: point.time)
-        other._amplitude_envelope_points.sort(key=lambda point: point.time)
+        self._sort_amplitude_envelope_points()
+        other._sort_amplitude_envelope_points()
 
         first_child._amplitude_envelope_points = []
         second_child._amplitude_envelope_points = []
@@ -167,14 +156,17 @@ class _Sound(Genome):
             magnitudes1 = spectrum1.magnitudes
             magnitudes2 = spectrum2.magnitudes
 
-            array = magnitudes2 - magnitudes1
-            array = numpy.square(array, out=array)
-            x = array.sum()
+            differences = magnitudes2 - magnitudes1
 
-            array = numpy.square(magnitudes1, out=array)
-            y = array.sum()
+            # The result is computed using the following formula:
+            # rank = sum(differences**2) / sum(magnitudes1**2)
 
-            ranks.append(x / y)
+            rank = (
+                numpy.dot(differences, differences) /
+                numpy.dot(magnitudes1, magnitudes1)
+            )
+
+            ranks.append(rank)
 
         return -numpy.mean(ranks)
 
@@ -193,9 +185,12 @@ class _Sound(Genome):
 
         return PcmAudio(self._reference_pcm_audio.sampling_rate, samples)
 
+    def _sort_amplitude_envelope_points(self):
+        self._amplitude_envelope_points.sort(key=lambda point: point.time)
+
     def __repr__(self):
 
-        self._amplitude_envelope_points.sort(key=lambda point: point.time)
+        self._sort_amplitude_envelope_points()
 
         return '\n'.join(
             (

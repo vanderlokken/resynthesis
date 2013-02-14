@@ -1,5 +1,6 @@
-import math
 from StringIO import StringIO
+
+import numpy
 
 from algorithm import GeneticAlgorithm, Population
 from sound import get_sound_factory
@@ -15,7 +16,7 @@ def resynthesize(reference_pcm_audio):
     pcm_audio = None
     sounds = []
 
-    for index in xrange(10):
+    for index in xrange(20):
 
         genome_factory = get_sound_factory(reference_pcm_audio, pcm_audio)
         population = Population(genome_factory, 80)
@@ -50,7 +51,7 @@ def construct_csound_file(sounds, pcm_audio, filename="out.csd"):
 
     def energy(sound):
         sound._base_pcm_audio = None
-        return sound.to_pcm_audio().samples.sum()
+        return numpy.abs(sound.to_pcm_audio().samples).sum()
 
     sounds = sorted(sounds, key=energy, reverse=True)
 
@@ -68,10 +69,12 @@ def construct_csound_file(sounds, pcm_audio, filename="out.csd"):
             .format(
                 amplitude=1,
                 freqency_ratio=sound._frequency / sound_frequency,
-                normalized_phase=sound._phase / (2 * math.pi)
+                normalized_phase=sound._phase / (2 * numpy.pi)
             )
         )
         print >> code_stream, signal
+
+        sound._sort_amplitude_envelope_points()
 
         envelope = "aEnvelope linseg 0"
         previous_point_time = 0
