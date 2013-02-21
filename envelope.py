@@ -9,16 +9,18 @@ class Envelope:
             self.value = value
 
         def __repr__(self):
-            return "(time=%f, value=%f)" % (self.time, self.value)
+            return "(time={time:.3f}, value={value:.3f})".format(
+                time=self.time, value=self.value)
 
-    def __init__(self, initial_value=1.0):
-
+    def __init__(self):
         self.__points = list()
-        self.add_point(Envelope.Point(0, initial_value))
 
-    def add_point(self, point):
-
-        self.__points.append(point)
+    def add_point(self, new_point):
+        for point in self.__points:
+            if point.time == new_point.time:
+                point.value = new_point.value
+                return
+        self.__points.append(new_point)
 
     def get_output(self, time_points):
 

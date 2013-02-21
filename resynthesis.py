@@ -76,22 +76,28 @@ def construct_csound_file(sounds, pcm_audio, filename="out.csd"):
 
         sound._sort_amplitude_envelope_points()
 
-        envelope = "aEnvelope linseg 0"
+        times = [point.time for point in sound._amplitude_envelope_points]
+        normalized_amplitudes = [
+            (point.value / signed_short_max) / sound_amplitude for point in
+                sound._amplitude_envelope_points]
+
+        envelope = "aEnvelope linseg iAmplitude * {amplitude:.3f}".format(
+            amplitude=normalized_amplitudes[0])
+
         previous_point_time = 0
-        for point in sound._amplitude_envelope_points:
+        for time, normalized_amplitude in zip(times, normalized_amplitudes):
             envelope = (
                 "{envelope}, "
                 "iDuration * {duration:.3f}, "
                 "iAmplitude * {amplitude:.3f}"
                 .format(
                     envelope=envelope,
-                    duration=point.time / sound_duration - previous_point_time,
-                    amplitude=(point.value / signed_short_max) / sound_amplitude
+                    duration=time / sound_duration - previous_point_time,
+                    amplitude=normalized_amplitude
                 )
             )
-            previous_point_time = point.time / sound_duration
-        envelope = "{envelope}, iDuration * {duration:.3f}, 0".format(
-            envelope=envelope, duration=1 - previous_point_time)
+            previous_point_time = time / sound_duration
+        envelope = "{envelope}, 0, 0".format(envelope=envelope)
         print >> code_stream, envelope
 
         print >> code_stream, "aResult = aResult + aSignal * aEnvelope"

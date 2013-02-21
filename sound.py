@@ -43,6 +43,7 @@ def _generate_frames_spectrums(
             pcm_audio.sampling_rate * 0.5 / len(spectrum.magnitudes))
         lower_bound = int(numpy.ceil(minimal_frequency / frequency_step))
         spectrum.magnitudes = spectrum.magnitudes[lower_bound:]
+        spectrum.magnitudes /= frame_size / 2
 
     return frames_spectrums
 
@@ -173,7 +174,7 @@ class _Sound(Genome):
     def to_pcm_audio(self):
 
         oscillator = Oscillator(self._frequency, self._phase)
-        envelope = Envelope(0)
+        envelope = Envelope()
         for point in self._amplitude_envelope_points:
             envelope.add_point(point)
 
@@ -206,7 +207,7 @@ class _Sound(Genome):
 
     @classmethod
     def random_amplitude(cls):
-        return random.randint(0, cls._maximal_amplitude)
+        return random.uniform(0, cls._maximal_amplitude)
 
     @classmethod
     def random_frequency(cls):
@@ -225,7 +226,8 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
         _reference_frames_spectrums =\
             _generate_frames_spectrums(reference_pcm_audio)
         _base_pcm_audio = base_pcm_audio
-        _maximal_amplitude = numpy.abs(reference_pcm_audio.samples).max()
+        _maximal_amplitude = numpy.max([spectrum.magnitudes.max() for spectrum
+            in _reference_frames_spectrums])
 
         _sample_times = numpy.linspace(
             0, reference_pcm_audio.duration, len(reference_pcm_audio.samples))
