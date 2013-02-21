@@ -16,13 +16,35 @@ class Spectrum:
 
     def __init__(self, samples):
         """ Note: this function modifies the contents of 'samples' """
+
         fft_result = scipy.fftpack.rfft(samples, overwrite_x=True)
-        self.magnitudes = numpy.abs(fft_result, out=fft_result)
+
+        # From the documentation for scipy.fftpack.rfft:
+        # The returned real arrays contains:
+        # [y(0), Re(y(1)), Im(y(1)), ..., Re(y(n/2))] if n is even
+
+        assert len(samples) % 2 == 0, "The number of 'samples' is not even"
+
+        real_parts = fft_result[1:-1:2]
+        imaginary_parts = fft_result[2::2]
+
+        self.magnitudes = numpy.sqrt(
+            numpy.square(real_parts, out=real_parts) +
+            numpy.square(imaginary_parts, out=imaginary_parts)
+        )
+        self.magnitudes = numpy.concatenate(
+            (fft_result[:1], self.magnitudes, fft_result[-1:]))
+
+        # Scale magnitudes. This allows to use them as amplitudes of sine waves
+        # during the proccess of sound synthesis (now it's used only to
+        # calculate the maximal possible amplitude).
+        self.magnitudes /= len(samples) / 2
+        self.magnitudes[0] *= 2
+        self.magnitudes[-1] *= 2
 
 
 def _generate_frames_spectrums(
-        pcm_audio, frame_size=4096, overlapping_size=2048,
-        minimal_frequency=20):
+        pcm_audio, frame_size=4096, overlapping_size=2048):
 
     sample_count = len(pcm_audio.samples)
     frame_count = int(numpy.floor(
@@ -37,13 +59,6 @@ def _generate_frames_spectrums(
             pcm_audio.samples[sample_index : sample_index + frame_size])
         spectrum = Spectrum(samples)
         frames_spectrums.append(spectrum)
-
-        # Remove unaudible frequencies
-        frequency_step = (
-            pcm_audio.sampling_rate * 0.5 / len(spectrum.magnitudes))
-        lower_bound = int(numpy.ceil(minimal_frequency / frequency_step))
-        spectrum.magnitudes = spectrum.magnitudes[lower_bound:]
-        spectrum.magnitudes /= frame_size / 2
 
     return frames_spectrums
 
