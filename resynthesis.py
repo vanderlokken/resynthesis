@@ -4,9 +4,13 @@ import numpy
 
 from algorithm import GeneticAlgorithm, Population
 from sound import get_sound_factory
+from spectrogram import Spectrogram
 
 
 def resynthesize(reference_pcm_audio):
+
+    Spectrogram(reference_pcm_audio.samples).to_tga_file(
+        "reference_spectrogram.tga")
 
     algorithm = GeneticAlgorithm()
     algorithm.generations_without_improvement_limit = 20
@@ -29,6 +33,8 @@ def resynthesize(reference_pcm_audio):
         print best_sound
         pcm_audio = best_sound.to_pcm_audio()
         pcm_audio.to_wave_file("debug%d.wav" % index)
+
+        Spectrogram(pcm_audio.samples).to_tga_file()
 
         best_score = best_sound.score
 

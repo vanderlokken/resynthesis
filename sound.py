@@ -1,66 +1,12 @@
-from collections import defaultdict
-import copy
 import random
 
-from algorithm import Genome
-
 import numpy
-import scipy.fftpack
 
+from algorithm import Genome
 from envelope import Envelope
 from oscillator import Oscillator
 from pcm_audio import PcmAudio
-
-
-class Spectrum:
-
-    def __init__(self, samples):
-        """ Note: this function modifies the contents of 'samples' """
-
-        fft_result = scipy.fftpack.rfft(samples, overwrite_x=True)
-
-        # From the documentation for scipy.fftpack.rfft:
-        # The returned real arrays contains:
-        # [y(0), Re(y(1)), Im(y(1)), ..., Re(y(n/2))] if n is even
-
-        assert len(samples) % 2 == 0, "The number of 'samples' is not even"
-
-        real_parts = fft_result[1:-1:2]
-        imaginary_parts = fft_result[2::2]
-
-        self.magnitudes = numpy.sqrt(
-            numpy.square(real_parts, out=real_parts) +
-            numpy.square(imaginary_parts, out=imaginary_parts)
-        )
-        self.magnitudes = numpy.concatenate(
-            (fft_result[:1], self.magnitudes, fft_result[-1:]))
-
-        # Scale magnitudes. This allows to use them as amplitudes of sine waves
-        # during the proccess of sound synthesis (now it's used only to
-        # calculate the maximal possible amplitude).
-        self.magnitudes /= len(samples) / 2
-        self.magnitudes[0] *= 2
-        self.magnitudes[-1] *= 2
-
-
-def _generate_frames_spectrums(
-        pcm_audio, frame_size=4096, overlapping_size=2048):
-
-    sample_count = len(pcm_audio.samples)
-    frame_count = int(numpy.floor(
-        (sample_count - frame_size) / (frame_size - overlapping_size)) + 1)
-
-    frames_spectrums = []
-
-    for frame_index in xrange(frame_count):
-
-        sample_index = frame_index * (frame_size - overlapping_size)
-        samples = numpy.array(
-            pcm_audio.samples[sample_index : sample_index + frame_size])
-        spectrum = Spectrum(samples)
-        frames_spectrums.append(spectrum)
-
-    return frames_spectrums
+from spectrogram import Spectrogram
 
 
 class _Sound(Genome):
@@ -87,20 +33,31 @@ class _Sound(Genome):
 
         mutated = False
 
+        def mutated_value(value, minimal_value, maximal_value):
+            """ The gaussian mutation operator. """
+            return numpy.clip(
+                random.normalvariate(
+                    value, (maximal_value - minimal_value) * 0.5),
+                minimal_value,
+                maximal_value)
+
         if random.random() <= rate:
-            self._frequency = random.uniform(
-                self._frequency, self.random_frequency())
+            self._frequency = mutated_value(
+                self._frequency,
+                self._minimal_frequency,
+                self._maximal_frequency)
             mutated = True
 
         if random.random() <= rate:
-            self._phase = random.uniform(self._phase, self.random_phase())
+            self._phase = mutated_value(self._phase, 0, 2 * numpy.pi)
             mutated = True
 
         for point in self._amplitude_envelope_points:
             if random.random() <= rate:
-                point.time = random.uniform(point.time, self.random_time())
-                point.value = random.uniform(
-                    point.value, self.random_amplitude())
+                point.time = mutated_value(
+                    point.time, 0, self._reference_pcm_audio.duration)
+                point.value = mutated_value(
+                    point.value, 0, self._maximal_amplitude)
                 mutated = True
 
         return mutated
@@ -117,14 +74,15 @@ class _Sound(Genome):
             mean = (first_parent_value + second_parent_value) / 2
             standard_deviation = abs(first_parent_value - mean)
 
-            first_child_value = random.normalvariate(mean, standard_deviation)
-            second_child_value = random.normalvariate(mean, standard_deviation)
+            first_child_value = numpy.clip(
+                random.normalvariate(mean, standard_deviation),
+                minimal_value,
+                maximal_value)
 
-            first_child_value = max(first_child_value, minimal_value)
-            second_child_value = max(second_child_value, minimal_value)
-
-            first_child_value = min(first_child_value, maximal_value)
-            second_child_value = min(second_child_value, maximal_value)
+            second_child_value = numpy.clip(
+                random.normalvariate(mean, standard_deviation),
+                minimal_value,
+                maximal_value)
 
             return first_child_value, second_child_value
 
@@ -161,16 +119,12 @@ class _Sound(Genome):
 
     def evaluate(self):
 
-        generated_frames_spectrums =\
-            _generate_frames_spectrums(self.to_pcm_audio())
+        spectrogram = Spectrogram(self.to_pcm_audio().samples)
 
         ranks = []
 
-        for spectrum1, spectrum2 in zip(
-                self._reference_frames_spectrums, generated_frames_spectrums):
-
-            magnitudes1 = spectrum1.magnitudes
-            magnitudes2 = spectrum2.magnitudes
+        for magnitudes1, magnitudes2 in zip(
+                self._reference_spectrogram, spectrogram):
 
             differences = magnitudes2 - magnitudes1
 
@@ -238,11 +192,10 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
     class Sound(_Sound):
 
         _reference_pcm_audio = reference_pcm_audio
-        _reference_frames_spectrums =\
-            _generate_frames_spectrums(reference_pcm_audio)
+        _reference_spectrogram = Spectrogram(reference_pcm_audio.samples)
         _base_pcm_audio = base_pcm_audio
-        _maximal_amplitude = numpy.max([spectrum.magnitudes.max() for spectrum
-            in _reference_frames_spectrums])
+        _maximal_amplitude = numpy.max(
+            [magnitudes.max() for magnitudes in _reference_spectrogram])
 
         _sample_times = numpy.linspace(
             0, reference_pcm_audio.duration, len(reference_pcm_audio.samples))
