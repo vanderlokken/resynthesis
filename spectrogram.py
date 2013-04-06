@@ -7,7 +7,7 @@ import scipy.fftpack
 
 def spectrum(signal, fft_length=None):
 
-    signal = numpy.copy(signal)
+    signal = numpy.array(signal, dtype=numpy.float64)
 
     if not fft_length:
         fft_length = len(signal)
@@ -53,11 +53,19 @@ class Spectrogram(object):
             spectrum(signal[frame_start:frame_start + frame_size], fft_length)
                 for frame_start in frame_starts]
 
+        self.__frequencies = numpy.linspace(0, 0.5, fft_length / 2 + 1)
+
+    def __getitem__(self, key):
+        return self.__spectrogram[key]
+
     def __iter__(self):
         return iter(self.__spectrogram)
 
     def __len__(self):
         return len(self.__spectrogram)
+
+    def get_frequencies(self, sampling_rate):
+        return self.__frequencies * sampling_rate
 
     def to_tga_file(self, filename="out.tga"):
 

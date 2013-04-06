@@ -93,9 +93,9 @@ class GeneticAlgorithm(object):
         self.generations_without_improvement_limit = 50
         self.score_improvement_threshold = 0.005
         self.selection_rate = 0.5
-        self.mutation_rate = 0.1
+        self.mutation_rate = 0.15
         self.elitism_rate = 0.15
-        self.mutation_decrease_rate = 0.0
+        self.mutation_decrease_rate = 0.01
 
     def run(self, population):
 

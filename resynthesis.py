@@ -1,8 +1,10 @@
+import os.path
 from StringIO import StringIO
 
 import numpy
 
 from algorithm import GeneticAlgorithm, Population
+from pcm_audio import PcmAudio
 from sound import get_sound_factory
 from spectrogram import Spectrogram
 
@@ -13,12 +15,16 @@ def resynthesize(reference_pcm_audio):
         "reference_spectrogram.tga")
 
     algorithm = GeneticAlgorithm()
-    algorithm.generations_without_improvement_limit = 20
-    algorithm.score_improvement_threshold = 0.0025
+    algorithm.generations_without_improvement_limit = 15
+    algorithm.score_improvement_threshold = 100
 
     best_score = None
     pcm_audio = None
     sounds = []
+
+    if os.path.exists("base.wav"):
+        print "Using 'base.wav' as a base sound for additive sythesis"
+        pcm_audio = PcmAudio.from_wave_file("base.wav")
 
     for index in xrange(20):
 

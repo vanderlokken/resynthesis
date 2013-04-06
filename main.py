@@ -9,7 +9,7 @@ from resynthesis import resynthesize
 def main():
 
     if len(sys.argv) < 3:
-        sys.exit("Usage: python wavegen.py <input .wav file name> <output .wav file name>")
+        sys.exit("Usage: python main.py <input .wav file name> <output .wav file name>")
 
     _, input_filename, output_filename = sys.argv
 

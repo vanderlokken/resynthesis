@@ -24,8 +24,7 @@ class _Sound(Genome):
         self._phase = self.random_phase()
 
         self._amplitude_envelope_points = [
-            Envelope.Point(time=self.random_time(),
-                           value=self.random_amplitude())
+            self.random_amplitude_envelope_point()
             for _ in xrange(self._point_count)
         ]
 
@@ -37,7 +36,7 @@ class _Sound(Genome):
             """ The gaussian mutation operator. """
             return numpy.clip(
                 random.normalvariate(
-                    value, (maximal_value - minimal_value) * 0.5),
+                    value, (maximal_value - minimal_value) * (0.2 + rate)),
                 minimal_value,
                 maximal_value)
 
@@ -57,7 +56,8 @@ class _Sound(Genome):
                 point.time = mutated_value(
                     point.time, 0, self._reference_pcm_audio.duration)
                 point.value = mutated_value(
-                    point.value, 0, self._maximal_amplitude)
+                    point.value, 0,
+                    self._amplitude_limit_envelope.get_output(point.time))
                 mutated = True
 
         return mutated
@@ -110,6 +110,14 @@ class _Sound(Genome):
             first_amplitude, second_amplitude = child_value_pair(
                 self_point.value, other_point.value, 0, self._maximal_amplitude)
 
+            first_amplitude = numpy.clip(
+                first_amplitude, 0,
+                self._amplitude_limit_envelope.get_output(first_time))
+
+            second_amplitude = numpy.clip(
+                second_amplitude, 0,
+                self._amplitude_limit_envelope.get_output(second_time))
+
             first_child._amplitude_envelope_points.append(
                 Envelope.Point(first_time, first_amplitude))
             second_child._amplitude_envelope_points.append(
@@ -129,12 +137,9 @@ class _Sound(Genome):
             differences = magnitudes2 - magnitudes1
 
             # The result is computed using the following formula:
-            # rank = sum(differences**2) / sum(magnitudes1**2)
+            # rank = sum(differences**2)
 
-            rank = (
-                numpy.dot(differences, differences) /
-                numpy.dot(magnitudes1, magnitudes1)
-            )
+            rank = numpy.dot(differences, differences)
 
             ranks.append(rank)
 
@@ -171,12 +176,12 @@ class _Sound(Genome):
             ))
 
     @classmethod
-    def random_time(cls):
-        return random.uniform(0, cls._reference_pcm_audio.duration)
-
-    @classmethod
-    def random_amplitude(cls):
-        return random.uniform(0, cls._maximal_amplitude)
+    def random_amplitude_envelope_point(cls):
+        time = random.uniform(
+            0, cls._reference_pcm_audio.duration)
+        value = random.uniform(
+            0, cls._amplitude_limit_envelope.get_output(time))
+        return Envelope.Point(time, value)
 
     @classmethod
     def random_frequency(cls):
@@ -199,5 +204,41 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
 
         _sample_times = numpy.linspace(
             0, reference_pcm_audio.duration, len(reference_pcm_audio.samples))
+
+    # Compute and overwrite maximal frequency
+
+    minimal_significant_amplitude = 20.0
+
+    significant_frequency_indices = [
+        index for index, amplitudes in enumerate(
+            zip(*Sound._reference_spectrogram))
+        if numpy.max(amplitudes) >= minimal_significant_amplitude]
+
+    maximal_frequency_index = numpy.max(significant_frequency_indices)
+
+    Sound._maximal_frequency = Sound._reference_spectrogram.get_frequencies(
+        Sound._reference_pcm_audio.sampling_rate)[maximal_frequency_index]
+
+    # Compute amplitude limit envelope
+
+    base_sound_spectrogram = (
+        Spectrogram(base_pcm_audio.samples) if base_pcm_audio else None)
+
+    envelope = Envelope()
+
+    frame_length = (
+        Sound._reference_pcm_audio.duration / len(Sound._reference_spectrogram))
+
+    for frame_index, magnitudes in enumerate(Sound._reference_spectrogram):
+        if base_sound_spectrogram:
+            magnitudes = magnitudes - base_sound_spectrogram[frame_index]
+        envelope.add_point(
+            Envelope.Point(
+                time=frame_length * (frame_index + 0.5),
+                value=numpy.max(magnitudes)
+            )
+        )
+
+    Sound._amplitude_limit_envelope = envelope
 
     return Sound
