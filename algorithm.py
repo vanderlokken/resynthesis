@@ -1,3 +1,4 @@
+from collections import deque
 import logging
 import random
 import sys
@@ -36,7 +37,6 @@ class Population(object):
         self._generation_count = 0
         self._size = size
         self._genomes = [genome_factory() for _ in xrange(size)]
-        self._breed = []
 
     def select(self, selection_rate):
         selected_count = int(self._size * selection_rate)
@@ -45,10 +45,12 @@ class Population(object):
 
     def crossbreed(self):
 
+        breed = []
+
         # Uses tournament selection algorithm
         tournament_size = 4
 
-        while len(self._breed) < self._size:
+        while len(self._genomes) + len(breed) < self._size:
 
             first_tournament = random.sample(self._genomes, tournament_size)
             second_tournament = random.sample(self._genomes, tournament_size)
@@ -57,19 +59,18 @@ class Population(object):
             second_parent = max(second_tournament, key=_genome_score)
 
             if first_parent is not second_parent:
-                self._breed += first_parent.cross(second_parent)
+                breed += first_parent.cross(second_parent)
 
-    def mutate(self, mutation_rate):
-        for genome in self._breed:
+        self._genomes += breed
+        self._genomes = self._genomes[:self._size]
+
+    def mutate(self, mutation_rate, elitism_rate):
+        elite_count = int(self._size * elitism_rate)
+        for genome in self._genomes[elite_count:]:
             if genome.mutate(mutation_rate):
                 genome.reset_score()
 
-    def advance_generation(self, elitism_rate):
-        elite_count = int(self._size * elitism_rate)
-        self._genomes.sort(key=_genome_score, reverse=True)
-        self._genomes = self._genomes[:elite_count]
-        self._genomes += self._breed[:self._size - elite_count]
-        self._breed = []
+    def advance_generation(self):
         self._generation_count += 1
 
     @property
@@ -90,10 +91,10 @@ class GeneticAlgorithm(object):
 
     def __init__(self):
         self.generation_limit = sys.maxint
-        self.generations_without_improvement_limit = 50
-        self.score_improvement_threshold = 0.005
+        self.generations_without_improvement_limit = 30
+        self.score_improvement_threshold = 100
         self.selection_rate = 0.5
-        self.mutation_rate = 0.15
+        self.mutation_rate = 0.25
         self.elitism_rate = 0.15
         self.mutation_decrease_rate = 0.01
 
@@ -101,28 +102,25 @@ class GeneticAlgorithm(object):
 
         current_mutation_rate = self.mutation_rate
 
-        best_score = None
-        generations_without_improvement = 0
+        last_generations_scores = deque()
 
         for generation_index in xrange(self.generation_limit):
 
             population.select(self.selection_rate)
             population.crossbreed()
-            population.mutate(current_mutation_rate)
-            population.advance_generation(self.elitism_rate)
+            population.mutate(current_mutation_rate, self.elitism_rate)
+            population.advance_generation()
 
             population.output_statistics()
 
-            if (best_score is None or population.best_genome.score -
-                    best_score >= self.score_improvement_threshold):
-                best_score = population.best_genome.score
-                generations_without_improvement = 0
-            else:
-                generations_without_improvement += 1
+            last_generations_scores.append(population.best_genome.score)
 
-            if generations_without_improvement ==\
+            if len(last_generations_scores) ==\
                     self.generations_without_improvement_limit:
-                break
+                score_improvement = (population.best_genome.score -
+                    last_generations_scores.popleft())
+                if score_improvement < self.score_improvement_threshold:
+                    break
 
             current_mutation_rate *= 1 - self.mutation_decrease_rate
 

@@ -15,8 +15,6 @@ def resynthesize(reference_pcm_audio):
         "reference_spectrogram.tga")
 
     algorithm = GeneticAlgorithm()
-    algorithm.generations_without_improvement_limit = 15
-    algorithm.score_improvement_threshold = 100
 
     best_score = None
     pcm_audio = None

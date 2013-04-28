@@ -9,9 +9,18 @@ from pcm_audio import PcmAudio
 from spectrogram import Spectrogram
 
 
+def wrap_around(value, minimal_value, maximal_value):
+    """ This function wraps around a value if it is out of boundaries """
+    if value < minimal_value:
+        value = 2 * minimal_value - value
+    if value > maximal_value:
+        value = 2 * maximal_value - value
+    return value
+
+
 class _Sound(Genome):
 
-    _minimal_frequency = 20
+    _minimal_frequency = 40
     _maximal_frequency = 20000
 
     _point_count = 5
@@ -34,7 +43,7 @@ class _Sound(Genome):
 
         def mutated_value(value, minimal_value, maximal_value):
             """ The gaussian mutation operator. """
-            return numpy.clip(
+            return wrap_around(
                 random.normalvariate(
                     value, (maximal_value - minimal_value) * (0.2 + rate)),
                 minimal_value,
@@ -74,12 +83,12 @@ class _Sound(Genome):
             mean = (first_parent_value + second_parent_value) / 2
             standard_deviation = abs(first_parent_value - mean)
 
-            first_child_value = numpy.clip(
+            first_child_value = wrap_around(
                 random.normalvariate(mean, standard_deviation),
                 minimal_value,
                 maximal_value)
 
-            second_child_value = numpy.clip(
+            second_child_value = wrap_around(
                 random.normalvariate(mean, standard_deviation),
                 minimal_value,
                 maximal_value)
@@ -137,10 +146,10 @@ class _Sound(Genome):
             differences = magnitudes2 - magnitudes1
 
             # The result is computed using the following formula:
-            # rank = sum(differences**2)
+            # rank = sum(weights * differences**2)
 
-            rank = numpy.dot(differences, differences)
-
+            rank = numpy.dot(
+                differences, differences * self._frequencies_weights)
             ranks.append(rank)
 
         return -numpy.mean(ranks)
@@ -205,6 +214,9 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
         _sample_times = numpy.linspace(
             0, reference_pcm_audio.duration, len(reference_pcm_audio.samples))
 
+    base_sound_spectrogram = (
+        Spectrogram(base_pcm_audio.samples) if base_pcm_audio else None)
+
     # Compute and overwrite maximal frequency
 
     minimal_significant_amplitude = 20.0
@@ -219,10 +231,24 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
     Sound._maximal_frequency = Sound._reference_spectrogram.get_frequencies(
         Sound._reference_pcm_audio.sampling_rate)[maximal_frequency_index]
 
-    # Compute amplitude limit envelope
+    # Compute and overwrite minimal frequency
 
-    base_sound_spectrogram = (
-        Spectrogram(base_pcm_audio.samples) if base_pcm_audio else None)
+    # if base_pcm_audio:
+
+    #     significant_base_frequency_indices = [
+    #         index for index, amplitudes in enumerate(
+    #             zip(*base_sound_spectrogram))
+    #         if numpy.max(amplitudes) >= minimal_significant_amplitude]
+
+    #     minimal_frequency_index = numpy.min([
+    #         index for index in significant_frequency_indices
+    #         if index not in significant_base_frequency_indices])
+
+    #     Sound._minimal_frequency = base_sound_spectrogram.get_frequencies(
+    #         base_pcm_audio.sampling_rate)[minimal_frequency_index]
+    #     print Sound._minimal_frequency
+
+    # Compute amplitude limit envelope
 
     envelope = Envelope()
 
@@ -240,5 +266,21 @@ def get_sound_factory(reference_pcm_audio, base_pcm_audio=None):
         )
 
     Sound._amplitude_limit_envelope = envelope
+
+    # Compute weights by frequencies
+
+    def weight_by_frequency(frequency):
+        """ To calculate weights this function uses a technique called
+        "A-weighting" """
+        return (12200 ** 2) * (frequency ** 4) / (
+            (frequency ** 2 + 20.6 ** 2) *
+            numpy.sqrt(frequency ** 2 + 107.7 ** 2) *
+            numpy.sqrt(frequency ** 2 + 737.9 ** 2) *
+            (frequency ** 2 + 12200 ** 2)
+        )
+
+    Sound._frequencies_weights = numpy.array(
+        map(weight_by_frequency, Sound._reference_spectrogram.get_frequencies(
+            Sound._reference_pcm_audio.sampling_rate)))
 
     return Sound

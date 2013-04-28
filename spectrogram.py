@@ -53,7 +53,7 @@ class Spectrogram(object):
             spectrum(signal[frame_start:frame_start + frame_size], fft_length)
                 for frame_start in frame_starts]
 
-        self.__frequencies = numpy.linspace(0, 0.5, fft_length / 2 + 1)
+        self.__fft_length = fft_length
 
     def __getitem__(self, key):
         return self.__spectrogram[key]
@@ -65,7 +65,7 @@ class Spectrogram(object):
         return len(self.__spectrogram)
 
     def get_frequencies(self, sampling_rate):
-        return self.__frequencies * sampling_rate
+        return numpy.linspace(0, 0.5, self.__fft_length / 2 + 1) * sampling_rate
 
     def to_tga_file(self, filename="out.tga"):
 
